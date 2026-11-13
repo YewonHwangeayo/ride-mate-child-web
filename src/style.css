@@ -1,0 +1,330 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+
+/* 디자인 토큰 — 자녀 웹 PNG(도착예정·곧도착·도착·픽업장소 변경·출발시간설정·설정완료·탑승완료) 기준 */
+:root {
+  --bg: #0e0e0f;
+  --surface: #2e2f33;
+  --surface-line: #3b3c41;
+  --surface-sunken: #1c1d20;
+  --sheet: #232428;
+  --btn: #2b2c30;
+  --btn-strong: #6b6c72;
+  --text: #f5f5f6;
+  --text-sub: #a3a4a9;
+  --text-dim: #7c7e83;
+  --lime: #d4f53c;
+  --lime-ink: #111;
+  --blue: #3d8bff;
+  --blue-bg: #1c2638;
+  --orange: #ff6b3d;
+  --orange-bg: #2b211e;
+  --map-bg: #22262b;
+
+  font-family: Inter, 'Noto Sans KR', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-synthesis: none;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+a { color: inherit; text-decoration: none; }
+
+/* ---------- 레이아웃 ---------- */
+.page { min-height: 100dvh; background: var(--bg); }
+.shell {
+  width: min(100%, 430px);
+  min-height: 100dvh;
+  margin: auto;
+  background: var(--bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.topbar { height: 58px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: Inter, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.6px;
+  color: #fff;
+}
+.brand-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--lime);
+  margin: 0 1.5px 0 .5px;
+  align-self: flex-end;
+  transform: translateY(-4px);
+}
+.top-label { font-size: 14px; color: var(--text-sub); font-weight: 500; }
+
+.pickup-main { flex: 1; display: flex; flex-direction: column; padding-bottom: 20px; }
+.pickup-main.has-departure { padding-bottom: 0; }
+
+/* ---------- 상태 카드 ---------- */
+.status-card {
+  margin: 10px 20px 16px;
+  padding: 20px 20px 22px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+}
+.status-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.status-badge {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  padding: 7px 11px 7px 9px;
+  color: #d4d5d9;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+.status-badge.arrived { background: var(--blue-bg); color: var(--blue); }
+.status-badge.changed { background: var(--orange-bg); color: var(--orange); }
+.status-card h1 { font-size: 20px; letter-spacing: -.6px; line-height: 1.4; margin: 12px 0 4px; font-weight: 700; }
+.status-card p { margin: 0; color: var(--text-sub); font-size: 13px; }
+.ack-btn {
+  border: 0; border-radius: 7px; padding: 7px 12px;
+  background: var(--surface-sunken); color: #e6e6e8; font-size: 12px; font-weight: 600;
+}
+
+/* ---------- 지도 ---------- */
+.map-panel { margin: 0 20px; flex: 1; display: flex; min-height: 0; }
+.map-container {
+  flex: 1;
+  min-height: 260px;
+  background: var(--map-bg);
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.map { width: 100%; height: 100%; }
+.map-fallback {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; text-align: center; background: var(--map-bg); color: var(--lime); font-size: 13px; padding: 20px;
+}
+.map-fallback p { color: #a0a3a7; font-size: 12px; line-height: 1.7; }
+.map-fit {
+  position: absolute; right: 16px; bottom: 16px; z-index: 10;
+  width: 38px; height: 38px; border-radius: 50%; border: 0;
+  display: grid; place-items: center;
+  background: #111214; color: #e9e9eb; box-shadow: 0 2px 8px #0008;
+}
+.has-departure .map-fit { bottom: 44px; }
+
+/* 지도 핀 */
+.pin { display: grid; place-items: center; line-height: 0; }
+.pin svg { display: block; filter: drop-shadow(0 2px 4px #0009); }
+.pin-car {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #fff; border: 3px solid #c6e63a;
+  box-shadow: 0 0 0 3px #1a1c1f, 0 2px 8px #000a;
+  display: grid; place-items: center;
+}
+.pin-car svg, .pin-me svg { filter: none; }
+.pin-me {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 9px rgba(212, 245, 60, .22), 0 2px 8px #0009;
+  display: grid; place-items: center;
+}
+.pin-academy {
+  background: #fff; color: #2b2f38; padding: 5px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 800; line-height: 1; box-shadow: 0 2px 6px #0008;
+}
+.map-label {
+  font-size: 13px; font-weight: 600; border-radius: 7px; padding: 8px 10px;
+  white-space: nowrap; line-height: 1; box-shadow: 0 2px 6px #0008;
+}
+.old-label { background: #1e1f22; color: #f1f1f2; }
+.new-label { background: var(--lime); color: var(--lime-ink); }
+
+.pickup-extra { margin: 10px 20px 0; display: flex; flex-direction: column; gap: 8px; }
+.hint, .guide-text { margin: 0; color: var(--text-sub); font-size: 12px; line-height: 1.6; }
+.guide-text { color: #d9dadd; font-size: 13px; }
+.pickup-photo { display: block; width: 100%; border-radius: 10px; max-height: 140px; object-fit: cover; }
+
+/* ---------- 출발 버튼 (도착예정.png) ---------- */
+.pickup-bottom { margin: 16px 20px 0; }
+.leave-stack { display: flex; flex-direction: column; gap: 10px; }
+.leave-now, .leave-row button {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--btn-strong);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+.leave-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.leave-row button { background: var(--btn); }
+
+/* ---------- 출발 시간 설정완료 시트 ---------- */
+.departure-sheet {
+  position: relative;
+  z-index: 5;
+  margin-top: -30px;
+  background: #18191b;
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px 22px;
+  box-shadow: 0 -6px 20px #0006;
+}
+.departure-sheet .sheet-handle { margin-bottom: 18px; }
+.departure-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+  border-radius: 12px;
+  padding: 18px 16px 18px 20px;
+}
+.departure-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tiny-label { font-size: 13px; color: var(--text-sub); }
+.departure-info strong { font-size: 24px; font-weight: 700; letter-spacing: -.5px; line-height: 1.2; }
+.departure-info strong small { font-size: 15px; font-weight: 600; letter-spacing: -.3px; }
+.departure-sub { font-size: 13px; color: var(--text-sub); }
+.departure-actions { display: flex; flex-direction: column; gap: 8px; width: 96px; flex: none; }
+.departure-actions button {
+  border: 0; border-radius: 8px; height: 40px; background: #121315; color: #f2f2f3; font-size: 13px; font-weight: 600;
+}
+.departure-actions .secondary-action { background: var(--btn-strong); color: #fff; }
+
+/* ---------- 알림 ---------- */
+.notice {
+  margin: 0 20px 12px;
+  padding: 12px 14px;
+  background: #292a2d;
+  border-radius: 10px;
+  color: #d8d8d8;
+  font-size: 13px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pickup-main .notice.error { margin: 12px 20px 0; background: #33211d; color: #ffb39c; }
+.toast {
+  position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60;
+  background: #f2f2f3; color: #111; border-radius: 22px; padding: 11px 18px;
+  font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 20px #0008;
+  animation: toast-in .22s ease-out;
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* ---------- 로딩 / 종료 / 탑승완료 ---------- */
+.loading { padding: 120px 20px; text-align: center; color: var(--text-sub); font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #333; border-top-color: var(--lime); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.retry-btn { margin-top: 20px; padding: 13px 28px; border: 0; background: var(--lime); border-radius: 10px; color: var(--lime-ink); font-weight: 700; }
+.done-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 20px 20px 140px;
+  text-align: center;
+}
+.done-check {
+  width: 72px; height: 72px; border-radius: 50%; background: var(--lime); color: #fff;
+  display: grid; place-items: center; margin-bottom: 18px;
+}
+.done-screen h2 { font-size: 20px; margin: 0 0 8px; letter-spacing: -.5px; }
+.done-screen p { font-size: 14px; color: var(--text-sub); line-height: 1.6; margin: 0; }
+.done-note {
+  margin-top: 36px; background: #1b1d22; color: #e1e2e5; width: 100%;
+  padding: 19px 12px; border-radius: 8px; font-size: 14px;
+}
+
+/* ---------- 출발 시간 설정 시트 (출발시간설정.png) ---------- */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .55);
+  display: flex; justify-content: center; align-items: flex-end;
+  animation: fade-in .18s ease-out;
+}
+@keyframes fade-in { from { opacity: 0; } }
+.time-sheet {
+  width: min(100%, 430px);
+  border-radius: 20px 20px 0 0;
+  background: var(--sheet);
+  padding: 10px 20px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 30px #0006;
+  animation: sheet-up .24s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes sheet-up { from { transform: translateY(40px); opacity: .4; } }
+.sheet-handle { width: 40px; height: 4px; background: #5b5d62; border-radius: 4px; margin: 0 auto 20px; }
+.time-sheet h3 { font-size: 16px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.3px; }
+.sheet-sub { font-size: 13px; color: var(--text-sub); margin: 0; }
+.sheet-error { color: #ff9b80; font-size: 12px; margin: 0 0 10px; }
+
+.wheel { position: relative; display: flex; align-items: center; justify-content: center; margin: 12px 0 18px; }
+.wheel-band {
+  position: absolute; left: 0; right: 0; top: 50%; height: 46px; transform: translateY(-50%);
+  background: #a9abb1; border-radius: 6px; pointer-events: none;
+}
+.wheel-column {
+  position: relative;
+  width: 112px;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+}
+.wheel-column::-webkit-scrollbar { display: none; }
+.wheel-item {
+  display: flex; width: 100%; align-items: center; justify-content: center;
+  scroll-snap-align: center;
+  background: transparent; border: 0; padding: 0;
+  font-size: 17px; font-weight: 500; color: #8d8f94;
+  font-variant-numeric: tabular-nums;
+  transition: color .12s, font-size .12s;
+}
+.wheel-item.d0 { color: #fff; font-size: 24px; font-weight: 700; }
+.wheel-item.d1 { color: #9c9ea3; }
+.wheel-item.d2, .wheel-item.d3 { color: #6f7176; }
+.wheel-colon { position: relative; width: 56px; text-align: center; font-size: 22px; font-weight: 700; color: #fff; }
+
+.sheet-actions { display: grid; grid-template-columns: 1fr 1.95fr; gap: 8px; }
+.sheet-actions button {
+  height: 56px; background: var(--btn); border: 0; border-radius: 10px; color: #fff; font-size: 15px; font-weight: 600;
+}
+.sheet-actions .primary { background: var(--btn-strong); }
+.sheet-text {
+  display: block; margin: 14px auto 2px; border: 0; background: none; color: var(--text-sub);
+  font-size: 13px; text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* ---------- 지도 진단 ---------- */
+.map-check-note { margin: 16px 20px; color: #9aa0a6; font-size: 12px; line-height: 1.6; }
+.map-check-note button {
+  margin-top: 10px; border: 0; background: #2c2d30; color: #fff; border-radius: 8px; padding: 10px 14px;
+}
+
+@media (min-width: 550px) {
+  .page { padding: 24px 0; }
+  .shell { min-height: calc(100dvh - 48px); box-shadow: 0 8px 35px #0005; border: 1px solid #222; border-radius: 20px; overflow: hidden; }
+}
+@media (max-height: 700px) {
+  .status-card { padding: 14px 16px; margin-bottom: 12px; }
+  .status-card h1 { margin: 8px 0 2px; font-size: 18px; }
+  .topbar { height: 52px; }
+  .leave-now, .leave-row button { height: 50px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
