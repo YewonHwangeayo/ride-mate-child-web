@@ -328,3 +328,74 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- 차량 QR 로그인 (1~5 PNG) ---------- */
+.auth { flex: 1; display: flex; flex-direction: column; padding: 14px 20px 20px; }
+.auth-form { flex: 1; display: flex; flex-direction: column; }
+.auth-title { font-size: 22px; font-weight: 700; letter-spacing: -.6px; line-height: 1.35; margin: 0 0 6px; }
+.auth-sub { font-size: 14px; color: var(--text-sub); margin: 0 0 26px; }
+.auth-input {
+  width: 100%; height: 56px; border-radius: 10px; padding: 0 18px;
+  background: #141416; border: 1px solid #3a3b40; color: #fff; font-size: 17px; letter-spacing: .3px;
+}
+.auth-input:focus { outline: none; border-color: #8a8c92; }
+.auth-input::placeholder { color: #5f6166; }
+.auth-input.small { height: 50px; font-size: 15px; margin-bottom: 14px; }
+.auth-help { font-size: 13px; color: var(--text-sub); margin: 12px 0 0; }
+.auth-msg { font-size: 13px; color: #ff9b80; margin: 12px 0 0; }
+.auth-bottom { margin-top: auto; padding-top: 24px; }
+.auth-bottom.stack { display: flex; flex-direction: column; gap: 8px; }
+.auth-primary, .auth-secondary {
+  width: 100%; height: 56px; border: 0; border-radius: 10px;
+  background: var(--btn-strong); color: #fff; font-size: 15px; font-weight: 600;
+}
+.auth-secondary { background: var(--btn); }
+
+.otp { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 9px; cursor: text; }
+.otp-input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 16px; caret-color: transparent; }
+.otp-box {
+  height: 56px; border-radius: 8px; background: #1c1d20; border: 1px solid transparent;
+  display: grid; place-items: center; font-size: 22px; font-weight: 600; color: #fff;
+}
+.otp-input:focus ~ .otp-box.active { border-color: #6f7176; background: #141416; }
+.otp-row { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }
+.otp-resend { border: 0; background: none; padding: 0; color: #e8e8ea; font-size: 14px; }
+.otp-timer { color: var(--blue); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.chip {
+  height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid #3a3b40;
+  background: #1c1d20; color: #e6e6e8; font-size: 14px; font-weight: 500;
+}
+.chip.on { border: 1.5px solid #fff; background: #0e0e0f; font-weight: 700; }
+.agree-box { border: 1px solid #2f3034; border-radius: 10px; padding: 6px 16px; }
+.agree-row { display: flex; align-items: center; justify-content: space-between; min-height: 48px; font-size: 14px; }
+.agree-row label, .agree-row.all { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.agree-row.all { font-size: 15px; font-weight: 600; justify-content: flex-start; }
+.agree-row input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.check {
+  width: 24px; height: 24px; border-radius: 5px; border: 1.5px solid #5a5c61; flex: none;
+  display: grid; place-items: center; background: transparent;
+}
+input:checked + .check { background: #fff; border-color: #fff; }
+input:checked + .check::after {
+  content: ''; width: 11px; height: 6px; border-left: 2.5px solid #111; border-bottom: 2.5px solid #111;
+  transform: translateY(-2px) rotate(-45deg);
+}
+input:focus-visible + .check { outline: 2px solid var(--lime); outline-offset: 2px; }
+.agree-line { height: 1px; background: #2f3034; }
+.agree-view { border: 0; background: none; color: var(--text-sub); font-size: 13px; padding: 6px 0 6px 10px; }
+.terms-text { margin: 4px 0 24px; line-height: 1.6; }
+.sheet-actions.single { grid-template-columns: 1fr; }
+
+.match-label { font-size: 14px; color: #e3e3e5; margin: 6px 0 10px; font-weight: 500; }
+.match-code {
+  height: 104px; border-radius: 10px; background: #18191b;
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.match-code .dim { color: #55575c; letter-spacing: 6px; }
+.text-link {
+  align-self: flex-start; margin-top: 14px; border: 0; background: none; padding: 4px 0;
+  color: var(--text-sub); font-size: 13px; text-decoration: underline; text-underline-offset: 3px;
+}

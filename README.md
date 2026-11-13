@@ -23,6 +23,7 @@ npm run dev          # http://localhost:5173
 - `.env.development.local`: 개발 시 `/api`를 Vite 프록시로 `API_PROXY_TARGET`(실제 서버)에 연결 → CORS 설정 없이 동작
 - 카카오디벨로퍼스 > 앱 > 플랫폼 > Web 사이트 도메인에 `http://localhost:5173` 등록 필요 (휴대폰 테스트 시 `http://<맥 IP>:5173`도 추가)
 - 픽업 링크로 접속: `http://localhost:5173/p/<43자리 토큰>` 또는 `/pickup?token=<토큰>`
+- 차량 QR 로그인: `http://localhost:5173/qr?code=<userCode>` (차 화면 QR = 서버 `verification_uri_complete`)
 - 지도 SDK만 점검: `http://localhost:5173/map-check`
 
 토큰 없이 `/`에 접속하면 무한 로딩 대신 링크 안내가 나옵니다.
@@ -31,3 +32,10 @@ npm run dev          # http://localhost:5173
 
 - `npm test`
 - `npm run build`
+
+## Vercel 배포
+
+- `vercel.json`이 `/api/*`를 API 서버로 프록시합니다 → 같은 도메인이라 CORS·웹 세션 쿠키(`__Host-rm_web_session`) 문제가 없습니다.
+- Vercel 환경 변수: `VITE_KAKAO_MAP_APP_KEY`만 설정, `VITE_API_BASE_URL`은 **비워 둡니다**(상대 경로 /api 사용).
+- 카카오디벨로퍼스 Web 도메인에 Vercel 주소 추가.
+- 서버(QR `verification_uri`, 픽업 SMS 링크)가 Vercel 도메인의 `/qr?code=…`, `/p/<토큰>`을 가리키도록 백엔드 설정 변경 필요.

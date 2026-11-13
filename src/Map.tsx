@@ -53,11 +53,16 @@ export function PickupMap({
   child,
   previous,
   showLabels = false,
+  onOpenLeave,
+  leaveDisabled = false,
 }: {
   pickup: Pickup;
   child: LatLng | null;
   previous: LatLng | null;
   showLabels?: boolean;
+  /** 지도 오른쪽 아래 동그라미 버튼 → 출발 시간 설정 시트 */
+  onOpenLeave?: () => void;
+  leaveDisabled?: boolean;
 }) {
   const node = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
@@ -128,7 +133,8 @@ export function PickupMap({
       pickup: pickup.pickup,
       previous,
       // 아이가 학원에 있으면 학원 핀이 내 위치 핀과 겹치므로 숨긴다.
-      academy: pickup.academy && child && roughMeters(pickup.academy, child) < AT_ACADEMY_METERS ? null : pickup.academy,
+      academy:
+        pickup.academy && child && roughMeters(pickup.academy, child) < AT_ACADEMY_METERS ? null : pickup.academy,
     };
     (Object.keys(coords) as MarkerKey[]).forEach((key) => {
       const coord = coords[key];
@@ -210,8 +216,14 @@ export function PickupMap({
   return (
     <div className="map-container">
       <div ref={node} className="map" />
-      {ready && (
-        <button type="button" className="map-fit" aria-label="전체 위치 보기" onClick={fitAll}>
+      {onOpenLeave && (
+        <button
+          type="button"
+          className="map-fit"
+          aria-label="출발 시간 설정"
+          disabled={leaveDisabled}
+          onClick={onOpenLeave}
+        >
           <LayoutGrid size={18} fill="currentColor" strokeWidth={1.5} />
         </button>
       )}

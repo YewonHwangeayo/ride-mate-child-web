@@ -5,6 +5,7 @@ import { WifiOff } from 'lucide-react';
 import { ApiError, pickupApi } from './api';
 import { PickupMap } from './Map';
 import { MapCheck } from './MapCheck';
+import { QrLogin } from './auth/QrLogin';
 import { toKstLocal } from './time';
 import { extractToken, isPickupToken, leavePath, pickupPath } from './token';
 import { vehicleIfFresh } from './pickupStatus';
@@ -155,7 +156,14 @@ function PickupActive({ token }: { token: string }) {
           onAcknowledge={state.acknowledgePlaceChange}
         />
         <div className="map-panel">
-          <PickupMap pickup={live} child={position} previous={state.previous} showLabels={state.placeChanged} />
+          <PickupMap
+            pickup={live}
+            child={position}
+            previous={state.previous}
+            showLabels={state.placeChanged}
+            onOpenLeave={openSheet}
+            leaveDisabled={locked || pending}
+          />
         </div>
         {(geoError || !live.pickup || live.pickup.guideText || live.pickup.photoUrl) && (
           <div className="pickup-extra">
@@ -243,6 +251,7 @@ export default function App() {
         <Route path="pickup" element={<></>} />
         <Route path="leave" element={<></>} />
       </Route>
+      <Route path="/qr" element={<QrLogin />} />
       <Route path="/map-check" element={<MapCheck />} />
       <Route path="*" element={<TokenRedirect />} />
     </Routes>
