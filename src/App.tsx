@@ -16,7 +16,7 @@ import { useWalkRoute, useWalkTrail } from './useWalk';
 import { formatWalk, routeFromHere } from './walk';
 import { BoardedScreen, LoadingScreen, Shell, StateScreen } from './components/Shell';
 import { StatusCard, driverLabel } from './components/StatusCard';
-import { DeparturePanel, LeaveButtons } from './components/LeaveControls';
+import { DeparturePanel, DeparturePeek, LeaveButtons } from './components/LeaveControls';
 import { TimeSheet } from './components/TimeSheet';
 import type { Leave, Pickup } from './types';
 
@@ -218,7 +218,7 @@ function PickupActive({ token }: { token: string }) {
           </div>
         )}
         {hasDeparture ? (
-          panelOpen && (
+          panelOpen ? (
             <DeparturePanel
               onCollapse={() => setPanelOpen(false)}
               data={live}
@@ -229,6 +229,8 @@ function PickupActive({ token }: { token: string }) {
               onLeaveIn5={leaveIn5}
               onPickTime={openSheet}
             />
+          ) : (
+            <DeparturePeek onExpand={() => setPanelOpen(true)} />
           )
         ) : (
           <div className="pickup-bottom">
@@ -285,6 +287,12 @@ function PickupGate({ token }: { token: string }) {
   return <PickupActive token={token} />;
 }
 
+/** QR 코드가 바뀌면(새 QR) 로그인 화면 상태를 처음부터 다시 시작 */
+function QrRoute() {
+  const loc = useLocation();
+  return <QrLogin key={loc.pathname + loc.search} />;
+}
+
 function TokenRedirect() {
   const loc = useLocation();
   const last = loc.pathname.split('/').filter(Boolean).at(-1) || '';
@@ -313,8 +321,8 @@ function AppRoutes() {
         <Route path="pickup" element={<></>} />
         <Route path="leave" element={<></>} />
       </Route>
-      <Route path="/qr" element={<QrLogin />} />
-      <Route path="/qr/:code" element={<QrLogin />} />
+      <Route path="/qr" element={<QrRoute />} />
+      <Route path="/qr/:code" element={<QrRoute />} />
       <Route path="/map-check" element={<MapCheck />} />
       {DevHome && (
         <Route

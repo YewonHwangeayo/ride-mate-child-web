@@ -273,7 +273,7 @@ async function mockFetch(input: RequestInfo | URL, init: RequestInit = {}): Prom
   }
   if (url.includes('/Auth/W/AddWebSession')) {
     if (body.code === '000000') {
-      return json({ signedIn: false, signupRequired: false, remainingAttempts: 4 }, 400);
+      return json({ signedIn: false, signupRequired: false, error: 'otp_mismatch', remainingAttempts: 4 }, 400);
     }
     if (!s.signedUp && !body.userName) return json({ signedIn: false, signupRequired: true }, 200, 101);
     if (body.userName) s.userName = body.userName;

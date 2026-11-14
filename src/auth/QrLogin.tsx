@@ -5,13 +5,13 @@ import { ApiError } from '../api';
 import { Shell, StateScreen } from '../components/Shell';
 import { authApi, errorData, type WebQrLogin } from './authApi';
 import { readUserCode } from './qrCode';
+import { otpErrorText, qrErrorText } from './authErrors';
 import { digitsOnly, formatPhone, isValidPhone, maskPhone, mmss } from './phone';
 
 /** 차량 QR 로그인 (휴대폰 웹) — 디자인 1~5번 PNG
  *  QR 주소: /qr?code=<userCode>  (서버 DeviceAuthorization 의 verification_uri_complete)
  */
 type Step = 'phone' | 'otp' | 'signup' | 'approve';
-const NAMES = ['엄마', '아빠', '할머니'] as const;
 
 function useCountdown(deadline: number | null) {
   const [left, setLeft] = useState(0);
@@ -26,15 +26,6 @@ function useCountdown(deadline: number | null) {
 }
 
 const after = (sec: number | null | undefined) => (sec ? performance.now() + sec * 1000 : null);
-
-function qrErrorText(info: WebQrLogin | undefined, status: number) {
-  const state = info?.qrState;
-  if (status === 404 || state === 'NOT_FOUND') return 'QR 정보를 찾을 수 없어요.';
-  if (state === 'EXPIRED') return 'QR 유효 시간이 지났어요.';
-  if (state === 'CANCELED') return '차 화면에서 로그인을 취소했어요.';
-  if (state === 'APPROVED' || state === 'USED') return '이미 로그인에 사용된 QR이에요.';
-  return 'QR 로그인을 이어갈 수 없어요.';
-}
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
@@ -57,10 +48,14 @@ export function QrLogin() {
   const [info, setInfo] = useState<WebQrLogin | null>(null);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [name, setName] = useState<string>('엄마');
+  const [name, setName] = useState<string>('');
   const [custom, setCustom] = useState(false);
-  const [agree, setAgree] = useState({ terms: false, privacy: false });
-  const [viewing, setViewing] = useState<null | 'terms' | 'privacy'>(null);
+  // arrivalLog = [선택] 차량 도착 기록 사용. 웹 가입 API(AddWebSession)에 필드가 없어 아직 서버로 보내지 않는다.
+  // TODO(backend): 웹 가입에서 선택 동의를 받으면 AddWebSession 에 연결 (차량 쪽은 AddConsent.arrivalLogYn)
+  const [agree, setAgree] = useState({ terms: false, privacy: false, arrivalLog: false });
+  // QR을 열었을 때 이미 이 휴대폰에 로그인 세션이 있었는지 (→ '이 번호로 로그인할까요?' 화면)
+  const [sessionEntry, setSessionEntry] = useState(false);
+  const [viewing, setViewing] = useState<null | 'terms' | 'privacy' | 'arrivalLog'>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [otpDeadline, setOtpDeadline] = useState<number | null>(null);
@@ -96,6 +91,7 @@ export function QrLogin() {
     try {
       const res = await authApi.detail(userCode);
       setInfo(res.data);
+      setSessionEntry(res.data.signedIn);
       setQrDeadline(after(res.data.expiresIn));
       setBoot('ready');
     } catch (e) {
@@ -114,7 +110,12 @@ export function QrLogin() {
   }, [step]);
 
   const handleQrError = (e: unknown) => {
-    if (e instanceof ApiError && (e.status === 404 || e.status === 409)) {
+    if (!(e instanceof ApiError)) return false;
+    const state = errorData(e)?.qrState;
+    if (
+      e.status === 404 ||
+      (e.status === 409 && ['USED', 'CANCELED', 'EXPIRED', 'NOT_FOUND'].includes(String(state)))
+    ) {
       setFatal(qrErrorText(errorData(e), e.status));
       setBoot('error');
       return true;
@@ -154,6 +155,7 @@ export function QrLogin() {
     let next = data;
     if (!next.matchCode) next = { ...next, ...(await authApi.detail(userCode)).data };
     setInfo({ ...next, signedIn: true });
+    setSessionEntry(false);
     go('approve');
   };
 
@@ -171,10 +173,9 @@ export function QrLogin() {
       else await afterSignIn(res.data);
     } catch (e) {
       if (handleQrError(e)) return;
-      const left = errorData(e)?.remainingAttempts;
       setMsg(
         e instanceof ApiError && e.status === 400
-          ? `인증번호가 맞지 않아요.${left != null ? ` (남은 횟수 ${left}번)` : ''}`
+          ? otpErrorText(errorData(e))
           : e instanceof ApiError
             ? e.message
             : '확인하지 못했어요.',
@@ -203,9 +204,14 @@ export function QrLogin() {
     } catch (e) {
       if (handleQrError(e)) return;
       if (e instanceof ApiError && e.status === 400) {
+        const data = errorData(e);
+        if (data?.error === 'terms_required' || data?.error === 'invalid_request' || !data?.error) {
+          setMsg(otpErrorText(data));
+          return;
+        }
         setCode('');
         go('otp', true);
-        setMsg('인증번호를 다시 확인해 주세요.');
+        setMsg(otpErrorText(data));
         return;
       }
       setMsg(e instanceof ApiError ? e.message : '가입하지 못했어요.');
@@ -223,10 +229,15 @@ export function QrLogin() {
       setFinished('done');
     } catch (e) {
       if (handleQrError(e)) return;
-      if (e instanceof ApiError && e.status === 401) {
+      const state = errorData(e)?.qrState;
+      if (
+        e instanceof ApiError &&
+        (e.status === 401 || (e.status === 409 && (state === 'SCANNED' || state === 'PENDING')))
+      ) {
+        // 세션 만료(401) 또는 본인 확인 전(SCANNED/PENDING) → 번호 인증부터 다시
         setInfo((v) => (v ? { ...v, signedIn: false } : v));
         go('phone', true);
-        setMsg('다시 로그인해 주세요.');
+        setMsg('본인 확인을 다시 해 주세요.');
         return;
       }
       setMsg(e instanceof ApiError ? e.message : '로그인을 허용하지 못했어요.');
@@ -239,12 +250,14 @@ export function QrLogin() {
     if (busy) return;
     setBusy(true);
     try {
-      await authApi.cancel(userCode);
-    } catch {
-      // 취소 실패여도 차 화면 QR은 3분 뒤 만료된다.
+      await authApi.cancel(userCode); // 이미 취소된 QR도 200
+      setFinished('canceled');
+    } catch (e) {
+      // 이미 사용됨(USED)·만료(EXPIRED) 등은 '취소했어요'가 아니라 그 상태를 안내
+      if (handleQrError(e)) return;
+      setFinished('canceled'); // 네트워크 오류 등: 차 화면 QR은 3분 뒤 만료된다
     } finally {
       setBusy(false);
-      setFinished('canceled');
     }
   };
 
@@ -258,6 +271,7 @@ export function QrLogin() {
     } finally {
       setBusy(false);
       setInfo((v) => (v ? { ...v, signedIn: false } : v));
+      setSessionEntry(false);
       setPhone('');
       go('phone', true);
     }
@@ -356,7 +370,7 @@ export function QrLogin() {
     return (
       <AuthShell>
         <h1 className="auth-title">휴대폰 번호를 입력해 주세요</h1>
-        <p className="auth-sub">차에 로그인할 부모님 번호예요</p>
+        <p className="auth-sub">차에 로그인할 전화번호예요.</p>
         <form
           className="auth-form"
           onSubmit={(e) => {
@@ -427,6 +441,17 @@ export function QrLogin() {
             <button
               type="button"
               className="otp-resend"
+              disabled={busy}
+              onClick={() => {
+                setCode('');
+                go('phone', true);
+              }}
+            >
+              번호 다시 입력
+            </button>
+            <button
+              type="button"
+              className="otp-resend"
               disabled={busy || resendLeft > 0}
               onClick={() => sendCode(true)}
             >
@@ -446,36 +471,18 @@ export function QrLogin() {
   }
 
   if (step === 'signup') {
-    const allAgreed = agree.terms && agree.privacy;
+    const requiredAgreed = agree.terms && agree.privacy;
+    const allAgreed = requiredAgreed && agree.arrivalLog;
     return (
       <AuthShell>
         <h1 className="auth-title">처음 오셨네요</h1>
         <p className="auth-sub">차 화면에 보일 이름을 정해 주세요</p>
-        <div className="chips" role="radiogroup" aria-label="이름">
-          {NAMES.map((n) => (
-            <button
-              key={n}
-              type="button"
-              role="radio"
-              aria-checked={!custom && name === n}
-              className={`chip ${!custom && name === n ? 'on' : ''}`}
-              onClick={() => {
-                setCustom(false);
-                setName(n);
-              }}
-            >
-              {n}
-            </button>
-          ))}
+        <div className="chips">
           <button
             type="button"
-            role="radio"
-            aria-checked={custom}
+            aria-pressed={custom}
             className={`chip ${custom ? 'on' : ''}`}
-            onClick={() => {
-              setCustom(true);
-              setName('');
-            }}
+            onClick={() => setCustom(true)}
           >
             직접 입력
           </button>
@@ -483,7 +490,7 @@ export function QrLogin() {
         {custom && (
           <input
             className="auth-input small"
-            placeholder="예: 이모, 삼촌"
+            placeholder="예: 엄마, 아빠, 할머니"
             aria-label="이름 직접 입력"
             maxLength={20}
             value={name}
@@ -496,7 +503,9 @@ export function QrLogin() {
             <input
               type="checkbox"
               checked={allAgreed}
-              onChange={(e) => setAgree({ terms: e.target.checked, privacy: e.target.checked })}
+              onChange={(e) =>
+                setAgree({ terms: e.target.checked, privacy: e.target.checked, arrivalLog: e.target.checked })
+              }
             />
             <span className="check" aria-hidden="true" />
             전체 동의
@@ -506,6 +515,7 @@ export function QrLogin() {
             [
               ['terms', '[필수] 서비스 이용약관'],
               ['privacy', '[필수] 개인정보 수집·이용'],
+              ['arrivalLog', '[선택] 차량 도착 기록 사용'],
             ] as const
           ).map(([key, label]) => (
             <div key={key} className="agree-row">
@@ -527,7 +537,12 @@ export function QrLogin() {
         <p className="auth-help">아이 정보와 보호자 동의는 차 화면의 초기 설정에서 받아요.</p>
         {notice}
         <div className="auth-bottom">
-          <button type="button" className="auth-primary" disabled={!allAgreed || !name.trim() || busy} onClick={signUp}>
+          <button
+            type="button"
+            className="auth-primary"
+            disabled={!requiredAgreed || !name.trim() || busy}
+            onClick={signUp}
+          >
             {busy ? '처리 중…' : '동의하고 계속'}
           </button>
         </div>
@@ -535,7 +550,13 @@ export function QrLogin() {
           <div className="sheet-backdrop" onClick={() => setViewing(null)}>
             <div className="time-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
               <div className="sheet-handle" aria-hidden="true" />
-              <h3>{viewing === 'terms' ? '서비스 이용약관' : '개인정보 수집·이용'}</h3>
+              <h3>
+                {viewing === 'terms'
+                  ? '서비스 이용약관'
+                  : viewing === 'privacy'
+                    ? '개인정보 수집·이용'
+                    : '차량 도착 기록 사용'}
+              </h3>
               <p className="sheet-sub terms-text">
                 {/* TODO: 확정된 약관 전문 또는 URL 연결 */}
                 약관 전문은 서비스 정책 확정 후 연결돼요.
@@ -552,19 +573,43 @@ export function QrLogin() {
     );
   }
 
-  // approve
+  // approve — 방금 인증했으면 '이 차에서 로그인할까요?', 이미 세션이 있었으면 '010-****-5678로 로그인할까요?'
   const match = (info?.matchCode ?? '').split('');
-  return (
-    <AuthShell>
-      <h1 className="auth-title">이 차에서 로그인할까요?</h1>
-      <p className="auth-sub">{[info?.userName, info?.maskedPhone].filter(Boolean).join(' · ') || '로그인한 계정'}</p>
+  const matchBox = (
+    <>
       <p className="match-label">차 화면의 숫자와 같은지 확인해 주세요</p>
       <div className="match-code" aria-label={`확인 숫자 ${info?.matchCode ?? ''}`}>
         {match.length ? match.map((d, i) => <span key={i}>{d}</span>) : <span className="dim">----</span>}
       </div>
-      <button type="button" className="text-link" onClick={switchAccount} disabled={busy}>
-        다른 번호로 로그인
-      </button>
+    </>
+  );
+  if (sessionEntry) {
+    return (
+      <AuthShell>
+        <h1 className="auth-title two-line">
+          {info?.maskedPhone ?? '이 번호'}로
+          <br />
+          로그인할까요?
+        </h1>
+        <p className="auth-sub">{[info?.userName, '이 휴대폰에서 인증한 번호예요'].filter(Boolean).join(' · ')}</p>
+        {matchBox}
+        {notice}
+        <div className="auth-bottom stack">
+          <button type="button" className="auth-primary" disabled={busy} onClick={approve}>
+            {busy ? '처리 중…' : '이 번호로 로그인'}
+          </button>
+          <button type="button" className="auth-secondary" disabled={busy} onClick={switchAccount}>
+            다른 번호로 로그인
+          </button>
+        </div>
+      </AuthShell>
+    );
+  }
+  return (
+    <AuthShell>
+      <h1 className="auth-title">이 차에서 로그인할까요?</h1>
+      <p className="auth-sub">{[info?.userName, info?.maskedPhone].filter(Boolean).join(' · ') || '로그인한 계정'}</p>
+      {matchBox}
       {notice}
       <div className="auth-bottom stack">
         <button type="button" className="auth-primary" disabled={busy} onClick={approve}>

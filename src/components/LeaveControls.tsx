@@ -1,4 +1,5 @@
 import { clock } from '../time';
+import { useSheetDrag } from './useSheetDrag';
 import type { Pickup } from '../types';
 
 type Handlers = {
@@ -39,13 +40,24 @@ export function DeparturePanel({
   onPickTime,
   onCollapse,
 }: Handlers & { data: Pickup; driver: string; onCollapse?: () => void }) {
+  // 손잡이를 아래로 끌면 접히고, 탭해도 접힌다 (다시 펼치기: 지도 시계 버튼 또는 아래 손잡이를 위로)
+  const drag = useSheetDrag({ direction: 'down', onRelease: () => onCollapse?.(), onTap: () => onCollapse?.() });
   const status = data.leave?.leaveStatus ?? 'NONE';
   const planned = data.leave?.plannedLeaveDt;
   const leaving = status === 'LEAVING';
   const disabled = locked || pending;
   return (
-    <div className="departure-sheet">
-      <button type="button" className="sheet-handle-btn" aria-label="내 출발 시간 접기" onClick={onCollapse}>
+    <div
+      className={`departure-sheet ${drag.dragging ? 'dragging' : ''}`}
+      style={drag.offset ? { transform: `translateY(${drag.offset}px)` } : undefined}
+    >
+      <button
+        type="button"
+        className="sheet-handle-btn"
+        aria-label="내 출발 시간 접기"
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onCollapse?.()}
+        {...drag.handleProps}
+      >
         <span className="sheet-handle" aria-hidden="true" />
       </button>
       <div className="departure-card">
@@ -84,5 +96,22 @@ export function DeparturePanel({
         )}
       </div>
     </div>
+  );
+}
+
+/** 접힌 상태의 아래 손잡이: 위로 끌거나 탭하면 내 출발 시간 시트가 펼쳐진다 */
+export function DeparturePeek({ onExpand }: { onExpand: () => void }) {
+  const drag = useSheetDrag({ direction: 'up', onRelease: onExpand, onTap: onExpand, threshold: 36 });
+  return (
+    <button
+      type="button"
+      className={`departure-peek ${drag.dragging ? 'dragging' : ''}`}
+      aria-label="내 출발 시간 펼치기"
+      style={drag.offset ? { transform: `translateY(${drag.offset}px)` } : undefined}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onExpand()}
+      {...drag.handleProps}
+    >
+      <span className="sheet-handle" aria-hidden="true" />
+    </button>
   );
 }

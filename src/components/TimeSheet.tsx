@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { clock, defaultLeaveClock, fromKstClock, isLeaveInRange, kstParts, parseKst, toKstLocal } from '../time';
 import { WheelColumn } from './TimeWheel';
+import { useSheetDrag } from './useSheetDrag';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
@@ -61,17 +62,20 @@ export function TimeSheet({
   };
 
   const message = localError || error;
+  // 손잡이를 아래로 끌면 닫힘
+  const drag = useSheetDrag({ direction: 'down', onRelease: onClose });
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
-        className="time-sheet"
+        className={`time-sheet ${drag.dragging ? 'dragging' : ''}`}
+        style={drag.offset ? { transform: `translateY(${drag.offset}px)` } : undefined}
         role="dialog"
         aria-modal="true"
         aria-labelledby="time-sheet-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sheet-handle" aria-hidden="true" />
+        <div className="sheet-handle" aria-hidden="true" {...drag.handleProps} />
         <h3 id="time-sheet-title">출발 시간 설정</h3>
         <p className="sheet-sub">
           {arrivalDt ? `${driver} 차는 ${clock(arrivalDt)}에 도착해요` : `${driver} 차의 도착 시간을 확인하고 있어요`}

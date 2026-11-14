@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LayoutGrid } from 'lucide-react';
+import { Clock3 } from 'lucide-react';
 import { loadKakao } from './kakao';
 import { ROUTE_COLOR } from './theme';
 import { AT_ACADEMY_METERS, childLine, roughMeters, vehicleLine } from './mapLines';
@@ -237,7 +237,8 @@ export function PickupMap({
 
     // 픽업 장소가 바뀌면(장소 변경) 새 장소·이전 장소·차·내 위치가 모두 보이게 다시 맞춘다
     const pickupKey = pickup.pickup ? `${pickup.pickup.lat},${pickup.pickup.lng}` : '';
-    if (fitted.current && pickupKey && fittedPickup.current && pickupKey !== fittedPickup.current) fitted.current = false;
+    if (fitted.current && pickupKey && fittedPickup.current && pickupKey !== fittedPickup.current)
+      fitted.current = false;
     if (pickupKey) fittedPickup.current = pickupKey;
     if (!fitted.current && !dragging.current && points().length > 0) {
       fitAll();
@@ -270,7 +271,7 @@ export function PickupMap({
           disabled={fabDisabled}
           onClick={onFab}
         >
-          <LayoutGrid size={18} fill="currentColor" strokeWidth={1.5} />
+          <Clock3 size={24} strokeWidth={2.2} />
         </button>
       )}
       {error && (
