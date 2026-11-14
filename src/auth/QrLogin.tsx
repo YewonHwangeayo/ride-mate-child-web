@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { ApiError } from '../api';
 import { Shell, StateScreen } from '../components/Shell';
 import { authApi, errorData, type WebQrLogin } from './authApi';
+import { readUserCode } from './qrCode';
 import { digitsOnly, formatPhone, isValidPhone, maskPhone, mmss } from './phone';
 
 /** 차량 QR 로그인 (휴대폰 웹) — 디자인 1~5번 PNG
@@ -46,7 +47,8 @@ function AuthShell({ children }: { children: React.ReactNode }) {
 export function QrLogin() {
   const location = useLocation();
   const navigate = useNavigate();
-  const userCode = new URLSearchParams(location.search).get('code') ?? '';
+  const userCode = readUserCode(location.pathname, location.search);
+  const [manualCode, setManualCode] = useState('');
   const routeStep = (location.state as { step?: Step } | null)?.step;
 
   const [boot, setBoot] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -280,7 +282,11 @@ export function QrLogin() {
   }
   if (finished === 'canceled') {
     return (
-      <StateScreen title="로그인을 취소했어요" description="차 화면에서 다시 QR을 띄우면 처음부터 진행할 수 있어요." />
+      <StateScreen
+        label="차량 로그인"
+        title="로그인을 취소했어요"
+        description="차 화면에서 다시 QR을 띄우면 처음부터 진행할 수 있어요."
+      />
     );
   }
   if (boot === 'loading') {
@@ -296,6 +302,7 @@ export function QrLogin() {
   if (boot === 'error') {
     return (
       <StateScreen
+        label="차량 로그인"
         title="QR 로그인을 이어갈 수 없어요"
         description={`${fatal} 차 화면에서 QR을 다시 띄워 주세요.`}
         action={
@@ -303,13 +310,40 @@ export function QrLogin() {
             <button type="button" className="retry-btn" onClick={load}>
               다시 시도
             </button>
+          ) : import.meta.env.DEV ? (
+            <form
+              className="dev-code"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const c = manualCode.trim();
+                if (c) navigate(`/qr?code=${encodeURIComponent(c)}`, { replace: true });
+              }}
+            >
+              <p className="auth-help">개발용: Swagger DeviceAuthorization의 user_code를 붙여 넣으세요</p>
+              <input
+                className="auth-input small"
+                placeholder="user_code"
+                aria-label="user_code"
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+              />
+              <button type="submit" className="retry-btn">
+                QR 로그인 시작
+              </button>
+            </form>
           ) : undefined
         }
       />
     );
   }
   if (qrDeadline !== null && qrLeft === 0) {
-    return <StateScreen title="QR 유효 시간이 지났어요" description="차 화면에서 QR을 다시 띄워 주세요." />;
+    return (
+      <StateScreen
+        label="차량 로그인"
+        title="QR 유효 시간이 지났어요"
+        description="차 화면에서 QR을 다시 띄워 주세요."
+      />
+    );
   }
 
   const notice = msg && (

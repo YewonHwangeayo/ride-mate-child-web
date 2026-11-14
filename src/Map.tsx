@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LayoutGrid } from 'lucide-react';
 import { loadKakao } from './kakao';
+import { ROUTE_COLOR } from './theme';
 import { AT_ACADEMY_METERS, childLine, roughMeters, vehicleLine } from './mapLines';
 import type { LatLng, Pickup } from './types';
 
@@ -9,7 +10,7 @@ type MarkerKey = 'vehicle' | 'child' | 'pickup' | 'previous' | 'academy';
 // 디자인(도착예정.png 등)의 핀을 SVG로 재현. 이미지 파일은 사용하지 않는다.
 const PIN_PATH = 'M20 2C10.6 2 3 9.4 3 18.6 3 30.4 20 46 20 46s17-15.6 17-27.4C37 9.4 29.4 2 20 2z';
 const SVG = {
-  pickup: `<svg width="40" height="48" viewBox="0 0 40 48" aria-hidden="true"><path d="${PIN_PATH}" fill="#d4f53c" stroke="#fff" stroke-width="3"/><circle cx="20" cy="18.5" r="5.5" fill="#fff"/></svg>`,
+  pickup: `<svg width="40" height="48" viewBox="0 0 40 48" aria-hidden="true"><path d="${PIN_PATH}" fill="${ROUTE_COLOR}" stroke="#fff" stroke-width="3"/><circle cx="20" cy="18.5" r="5.5" fill="#fff"/></svg>`,
   previous: `<svg width="40" height="48" viewBox="0 0 40 48" aria-hidden="true"><path d="${PIN_PATH}" fill="#76787d" stroke="#a4a6ab" stroke-width="3"/><circle cx="20" cy="18.5" r="5.5" fill="#3a3b40"/></svg>`,
   vehicle: `<span class="pin-car"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b1d20" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14v-5l-2-5H7l-2 5z" fill="#1b1d20"/><path d="M3 12h18"/><circle cx="7.5" cy="17.5" r="1.6" fill="#1b1d20"/><circle cx="16.5" cy="17.5" r="1.6" fill="#1b1d20"/><path d="M8 10h8" stroke="#fff" stroke-width="1.6"/></svg></span>`,
   child: `<span class="pin-me"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7z" fill="#17191a"/></svg></span>`,
@@ -53,23 +54,38 @@ export function PickupMap({
   child,
   previous,
   showLabels = false,
-  onOpenLeave,
-  leaveDisabled = false,
+  onFab,
+  fabLabel = '출발 시간 설정',
+  fabActive = false,
+  fabDisabled = false,
+  route = null,
+  trail = [],
+  walkSummary = '',
 }: {
   pickup: Pickup;
   child: LatLng | null;
   previous: LatLng | null;
   showLabels?: boolean;
   /** 지도 오른쪽 아래 동그라미 버튼 → 출발 시간 설정 시트 */
-  onOpenLeave?: () => void;
-  leaveDisabled?: boolean;
+  onFab?: () => void;
+  fabLabel?: string;
+  /** 하단 시트가 펼쳐진 상태 표시 */
+  fabActive?: boolean;
+  fabDisabled?: boolean;
+  /** 보행자 경로 API 결과 (내 위치 → 픽업) */
+  route?: LatLng[] | null;
+  /** 지금까지 걸어온 동선 (휴대폰 메모리) */
+  trail?: LatLng[];
+  /** 예: 도보 3분 · 210m */
+  walkSummary?: string;
 }) {
   const node = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const overlays = useRef<Record<string, any>>({});
-  const lines = useRef<{ child?: any; vehicle?: any }>({});
+  const lines = useRef<{ child?: any; vehicle?: any; trail?: any }>({});
   const dragging = useRef(false);
   const fitted = useRef(false);
+  const fittedPickup = useRef('');
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
 
@@ -98,6 +114,7 @@ export function PickupMap({
       overlays.current = {};
       lines.current.child?.setMap(null);
       lines.current.vehicle?.setMap(null);
+      lines.current.trail?.setMap(null);
       lines.current = {};
       map.current = null;
     };
@@ -179,15 +196,17 @@ export function PickupMap({
     setLabel('newLabel', pickup.pickup, '변경된 위치', 'new');
 
     // 선은 지우고 다시 만들지 않고 setPath로 위치만 갱신한다 (실시간 이동 반영).
-    const setLine = (id: 'child' | 'vehicle', path: LatLng[] | null, style: Record<string, unknown>) => {
+    const setLine = (id: 'child' | 'vehicle' | 'trail', path: LatLng[] | null, style: Record<string, unknown>) => {
       if (!path) {
         lines.current[id]?.setMap(null);
         delete lines.current[id];
         return;
       }
       const kpath = path.map((p) => new k.maps.LatLng(p.lat, p.lng));
-      if (lines.current[id]) lines.current[id].setPath(kpath);
-      else lines.current[id] = new k.maps.Polyline({ map: map.current, path: kpath, ...style });
+      if (lines.current[id]) {
+        lines.current[id].setOptions?.(style);
+        lines.current[id].setPath(kpath);
+      } else lines.current[id] = new k.maps.Polyline({ map: map.current, path: kpath, ...style });
     };
     // 흰 선: 차 → 픽업 장소
     setLine('vehicle', vehicleLine(pickup.vehicle, pickup.pickup), {
@@ -198,31 +217,58 @@ export function PickupMap({
       zIndex: 1,
     });
     // 연두 선: 내 위치(휴대폰) → 픽업 장소
-    setLine('child', childLine(child, pickup.pickup, pickup.academy, pickup.walkPath), {
+    // 연두 선: 내 위치(휴대폰) → 픽업 장소. 보행자 경로가 없으면 점선 직선
+    const cl = childLine(child, pickup.pickup, pickup.academy, pickup.walkPath, route);
+    setLine('child', cl?.path ?? null, {
       strokeWeight: 6,
-      strokeColor: '#d4f53c',
-      strokeOpacity: 1,
-      strokeStyle: 'solid',
+      strokeColor: ROUTE_COLOR,
+      strokeOpacity: cl?.kind === 'direct' ? 0.85 : 1,
+      strokeStyle: cl?.kind === 'direct' ? 'shortdash' : 'solid',
       zIndex: 2,
     });
+    // 걸어온 동선: 연한 연두 점선
+    setLine('trail', trail.length > 1 ? trail : null, {
+      strokeWeight: 4,
+      strokeColor: ROUTE_COLOR,
+      strokeOpacity: 0.4,
+      strokeStyle: 'shortdot',
+      zIndex: 1,
+    });
 
+    // 픽업 장소가 바뀌면(장소 변경) 새 장소·이전 장소·차·내 위치가 모두 보이게 다시 맞춘다
+    const pickupKey = pickup.pickup ? `${pickup.pickup.lat},${pickup.pickup.lng}` : '';
+    if (fitted.current && pickupKey && fittedPickup.current && pickupKey !== fittedPickup.current) fitted.current = false;
+    if (pickupKey) fittedPickup.current = pickupKey;
     if (!fitted.current && !dragging.current && points().length > 0) {
       fitAll();
       fitted.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, pickup.vehicle, pickup.pickup, pickup.academy, pickup.walkPath, child, previous, showLabels]);
+  }, [
+    ready,
+    pickup.vehicle,
+    pickup.pickup,
+    pickup.academy,
+    pickup.walkPath,
+    child,
+    previous,
+    showLabels,
+    route,
+    trail,
+  ]);
 
   return (
     <div className="map-container">
       <div ref={node} className="map" />
-      {onOpenLeave && (
+      {walkSummary && <div className="walk-chip">{walkSummary}</div>}
+      {onFab && (
         <button
           type="button"
-          className="map-fit"
-          aria-label="출발 시간 설정"
-          disabled={leaveDisabled}
-          onClick={onOpenLeave}
+          className={`map-fit ${fabActive ? 'active' : ''}`}
+          aria-expanded={fabActive}
+          aria-label={fabLabel}
+          disabled={fabDisabled}
+          onClick={onFab}
         >
           <LayoutGrid size={18} fill="currentColor" strokeWidth={1.5} />
         </button>

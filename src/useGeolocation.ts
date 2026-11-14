@@ -4,6 +4,7 @@ import type { LatLng } from './types';
 export function useGeolocation(enabled = true) {
   const [position, setPosition] = useState<LatLng | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -20,6 +21,7 @@ export function useGeolocation(enabled = true) {
       watch = navigator.geolocation.watchPosition(
         (p) => {
           setPosition({ lat: p.coords.latitude, lng: p.coords.longitude });
+          setAccuracy(Number.isFinite(p.coords.accuracy) ? p.coords.accuracy : null);
           setError(null);
         },
         (e) => setError(e.code === 1 ? '위치 권한이 꺼져 있어요.' : '현재 위치를 확인하지 못했어요.'),
@@ -44,5 +46,5 @@ export function useGeolocation(enabled = true) {
     };
   }, [enabled]);
 
-  return { position, error };
+  return { position, accuracy, error };
 }

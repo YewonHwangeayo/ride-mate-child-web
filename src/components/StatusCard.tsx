@@ -21,7 +21,6 @@ export function StatusCard({
 }) {
   const phase = pickupPhase(data, now, placeChanged);
   const left = minutesLeft(data.arrivalDt, now);
-  const driver = driverLabel(data);
   const arrivalClock = clock(data.arrivalDt);
 
   const badge =
@@ -39,22 +38,19 @@ export function StatusCard({
       </span>
     );
 
-  const title =
+  // 새 디자인: 큰 도착 시각 + 상태 문구 (도착예정.png 수정본)
+  const bigTime = data.arrivalDt ? arrivalClock : '--:--';
+  const timeLabel = phase === 'arrived' ? '도착 완료' : '도착 예정';
+  const message =
     phase === 'arrived'
-      ? `${driver} 차가 도착했어요`
+      ? '픽업 장소에 차가 도착했어요'
       : phase === 'placeChanged'
         ? '만나는 위치가 변경됐어요'
         : phase === 'soon'
           ? '잠시 후 도착해요'
           : phase === 'etaUnknown'
             ? '도착 시간을 확인하고 있어요'
-            : `${left}분 뒤 도착`;
-
-  const sub = !data.arrivalDt
-    ? `${driver} · 도착 시간 확인 중`
-    : phase === 'arrived'
-      ? `${driver} · ${arrivalClock} 도착`
-      : `${driver} · ${arrivalClock} 도착 예정`;
+            : `${left}분 뒤 도착해요`;
 
   return (
     <section className="status-card" aria-live="polite">
@@ -66,8 +62,23 @@ export function StatusCard({
           </button>
         )}
       </div>
-      <h1>{title}</h1>
-      <p>{sub}</p>
+      <div className="status-time">
+        <strong>{bigTime}</strong>
+        <span>{timeLabel}</span>
+      </div>
+      <h1 className="status-msg">{message}</h1>
+      {placeChanged && phase !== 'placeChanged' && (
+        <div className="status-extra">
+          <span>
+            <MapPin size={13} strokeWidth={2.4} /> 만나는 위치가 변경됐어요
+          </span>
+          {onAcknowledge && (
+            <button type="button" className="ack-btn" onClick={onAcknowledge}>
+              확인
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

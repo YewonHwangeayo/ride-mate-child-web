@@ -17,10 +17,7 @@ function sameCoord(a: LatLng | null | undefined, b: LatLng | null | undefined) {
 export function applySnapshot(view: PickupView, snapshot: Snapshot): PickupView {
   const { change, ...next } = snapshot;
   const oldPickup = view.data?.pickup;
-  const moved =
-    !!oldPickup &&
-    !!next.pickup &&
-    !sameCoord(oldPickup, next.pickup);
+  const moved = !!oldPickup && !!next.pickup && !sameCoord(oldPickup, next.pickup);
   const announced = change === 'PLACE_CHANGED' && moved;
   const inferred = change !== null && change !== undefined && moved;
   const placeChanged = announced || inferred;

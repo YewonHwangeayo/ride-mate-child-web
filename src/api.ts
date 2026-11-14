@@ -58,7 +58,12 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
 export const pickupApi = {
   detail: (token: string) => request<Envelope<Pickup>>('/api/v1/Pickup/W/DetailChildPickup', {}, token),
-  open: (token: string) => request<Envelope<{ reason: null; openedDt: string }>>('/api/v1/Pickup/W/AddPickupLinkOpen', { method: 'POST' }, token),
+  open: (token: string) =>
+    request<Envelope<{ reason: null; openedDt: string }>>(
+      '/api/v1/Pickup/W/AddPickupLinkOpen',
+      { method: 'POST' },
+      token,
+    ),
   leave: (token: string, body: { leaveNow: true } | { leaveDt: string }) =>
     request<Envelope<Leave>>('/api/v1/Pickup/W/AddChildLeave', { method: 'POST', body: JSON.stringify(body) }, token),
   cancel: (token: string) => request<Envelope<Leave>>('/api/v1/Pickup/W/DeleteChildLeave', { method: 'DELETE' }, token),

@@ -37,14 +37,17 @@ export function DeparturePanel({
   pending,
   onLeaveNow,
   onPickTime,
-}: Handlers & { data: Pickup; driver: string }) {
+  onCollapse,
+}: Handlers & { data: Pickup; driver: string; onCollapse?: () => void }) {
   const status = data.leave?.leaveStatus ?? 'NONE';
   const planned = data.leave?.plannedLeaveDt;
   const leaving = status === 'LEAVING';
   const disabled = locked || pending;
   return (
     <div className="departure-sheet">
-      <div className="sheet-handle" aria-hidden="true" />
+      <button type="button" className="sheet-handle-btn" aria-label="내 출발 시간 접기" onClick={onCollapse}>
+        <span className="sheet-handle" aria-hidden="true" />
+      </button>
       <div className="departure-card">
         <div className="departure-info">
           <span className="tiny-label">내 출발 시간</span>

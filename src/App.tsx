@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { WifiOff } from 'lucide-react';
@@ -6,16 +6,32 @@ import { ApiError, pickupApi } from './api';
 import { PickupMap } from './Map';
 import { MapCheck } from './MapCheck';
 import { QrLogin } from './auth/QrLogin';
+import { CHILD_LOGIN_ENABLED, ChildLogin, childLoginDone } from './auth/ChildLogin';
 import { toKstLocal } from './time';
 import { extractToken, isPickupToken, leavePath, pickupPath } from './token';
 import { vehicleIfFresh } from './pickupStatus';
 import { pickupQueryKey, usePickup, useServerNow } from './usePickup';
 import { useGeolocation } from './useGeolocation';
+import { useWalkRoute, useWalkTrail } from './useWalk';
+import { formatWalk, routeFromHere } from './walk';
 import { BoardedScreen, LoadingScreen, Shell, StateScreen } from './components/Shell';
 import { StatusCard, driverLabel } from './components/StatusCard';
 import { DeparturePanel, LeaveButtons } from './components/LeaveControls';
 import { TimeSheet } from './components/TimeSheet';
 import type { Leave, Pickup } from './types';
+
+// 개발 전용 (npm run dev). 배포 빌드에서는 import.meta.env.DEV=false 라 번들에 포함되지 않는다.
+const DevHome = import.meta.env.DEV ? lazy(() => import('./dev/DevHome')) : null;
+const DemoPanel = import.meta.env.DEV
+  ? lazy(() => import('./dev/DemoPanel').then((m) => ({ default: m.DemoPanel })))
+  : null;
+const demoOn = () => {
+  try {
+    return import.meta.env.DEV && sessionStorage.getItem('rm-demo') === '1';
+  } catch {
+    return false;
+  }
+};
 
 type LeaveBody = { leaveNow: true } | { leaveDt: string };
 
@@ -42,10 +58,28 @@ function PickupActive({ token }: { token: string }) {
   const qc = useQueryClient();
   const state = usePickup(token);
   const data = state.data;
-  const { position, error: geoError } = useGeolocation(data?.linkStatus === 'ACTIVE');
+  const active = data?.linkStatus === 'ACTIVE';
+  const { position, accuracy, error: geoError } = useGeolocation(active);
+  const trail = useWalkTrail(position, accuracy, active);
+  const pickupPoint = useMemo(
+    () => (data?.pickup ? { lat: data.pickup.lat, lng: data.pickup.lng } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data?.pickup?.lat, data?.pickup?.lng],
+  );
+  const walk = useWalkRoute(position, pickupPoint, active);
+  const walkLine = useMemo(
+    () => (position && walk.path ? routeFromHere(position, walk.path) : null),
+    [position, walk.path],
+  );
   const now = useServerNow(data?.serverDt);
   const [message, setMessage] = useState('');
   const [toast, setToast] = useState('');
+  // 출발 시간 설정 후 하단 시트(내 출발 시간) 펼침/접힘 — 지도 동그라미 버튼·손잡이로 토글
+  const [panelOpen, setPanelOpen] = useState(true);
+  const leaveKey = data?.leave?.leaveStatus ?? 'NONE';
+  useEffect(() => {
+    if (leaveKey !== 'NONE') setPanelOpen(true);
+  }, [leaveKey]);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
@@ -143,7 +177,7 @@ function PickupActive({ token }: { token: string }) {
 
   return (
     <Shell>
-      <div className={`pickup-main ${hasDeparture ? 'has-departure' : ''}`}>
+      <div className={`pickup-main ${hasDeparture ? (panelOpen ? 'has-departure' : 'departure-collapsed') : ''}`}>
         {state.unstable && (
           <div className="notice" role="status">
             <WifiOff size={15} /> 연결이 불안정해요. 정보를 다시 확인하고 있어요.
@@ -161,8 +195,13 @@ function PickupActive({ token }: { token: string }) {
             child={position}
             previous={state.previous}
             showLabels={state.placeChanged}
-            onOpenLeave={openSheet}
-            leaveDisabled={locked || pending}
+            onFab={hasDeparture ? () => setPanelOpen((v) => !v) : openSheet}
+            fabLabel={hasDeparture ? (panelOpen ? '내 출발 시간 접기' : '내 출발 시간 펼치기') : '출발 시간 설정'}
+            fabActive={hasDeparture && panelOpen}
+            route={walkLine}
+            trail={trail}
+            walkSummary={walk.status === 'tmap' ? formatWalk(walk.distance, walk.time) : ''}
+            fabDisabled={!hasDeparture && (locked || pending)}
           />
         </div>
         {(geoError || !live.pickup || live.pickup.guideText || live.pickup.photoUrl) && (
@@ -179,15 +218,18 @@ function PickupActive({ token }: { token: string }) {
           </div>
         )}
         {hasDeparture ? (
-          <DeparturePanel
-            data={live}
-            driver={driver}
-            locked={locked}
-            pending={pending}
-            onLeaveNow={leaveNow}
-            onLeaveIn5={leaveIn5}
-            onPickTime={openSheet}
-          />
+          panelOpen && (
+            <DeparturePanel
+              onCollapse={() => setPanelOpen(false)}
+              data={live}
+              driver={driver}
+              locked={locked}
+              pending={pending}
+              onLeaveNow={leaveNow}
+              onLeaveIn5={leaveIn5}
+              onPickTime={openSheet}
+            />
+          )
         ) : (
           <div className="pickup-bottom">
             <LeaveButtons
@@ -233,6 +275,13 @@ function PickupFrame() {
       />
     );
   }
+  return <PickupGate token={token} />;
+}
+
+/** SMS 링크 → (미리보기 플래그가 켜져 있으면) 로그인 화면 → 픽업 홈 */
+function PickupGate({ token }: { token: string }) {
+  const [loggedIn, setLoggedIn] = useState(() => !CHILD_LOGIN_ENABLED || childLoginDone());
+  if (!loggedIn) return <ChildLogin token={token} onDone={() => setLoggedIn(true)} />;
   return <PickupActive token={token} />;
 }
 
@@ -245,6 +294,19 @@ function TokenRedirect() {
 
 export default function App() {
   return (
+    <>
+      <AppRoutes />
+      {DemoPanel && demoOn() && (
+        <Suspense fallback={null}>
+          <DemoPanel />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+function AppRoutes() {
+  return (
     <Routes>
       <Route path="/" element={<PickupFrame />} />
       <Route element={<PickupFrame />}>
@@ -252,7 +314,18 @@ export default function App() {
         <Route path="leave" element={<></>} />
       </Route>
       <Route path="/qr" element={<QrLogin />} />
+      <Route path="/qr/:code" element={<QrLogin />} />
       <Route path="/map-check" element={<MapCheck />} />
+      {DevHome && (
+        <Route
+          path="/dev"
+          element={
+            <Suspense fallback={null}>
+              <DevHome />
+            </Suspense>
+          }
+        />
+      )}
       <Route path="*" element={<TokenRedirect />} />
     </Routes>
   );

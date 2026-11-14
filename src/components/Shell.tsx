@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { Check } from 'lucide-react';
+import { ROUTE_COLOR } from '../theme';
 
 export function Brand() {
   return (
     <span className="brand" aria-label="Ridemate">
-      R<span className="brand-dot" aria-hidden="true" />
+      R<span className="brand-dot" style={{ background: ROUTE_COLOR }} aria-hidden="true" />
       idemate
     </span>
   );
@@ -28,13 +29,15 @@ export function StateScreen({
   title,
   description,
   action,
+  label,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  label?: string;
 }) {
   return (
-    <Shell>
+    <Shell label={label}>
       <div className="done-screen">
         <h2>{title}</h2>
         <p>{description}</p>

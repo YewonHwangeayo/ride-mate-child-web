@@ -58,8 +58,8 @@ a { color: inherit; text-decoration: none; }
   color: #fff;
 }
 .brand-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--lime);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lime); /* 실제 색은 theme.ts ROUTE_COLOR (지도 동선과 동일) */
   margin: 0 1.5px 0 .5px;
   align-self: flex-end;
   transform: translateY(-4px);
@@ -217,7 +217,7 @@ a { color: inherit; text-decoration: none; }
 }
 .pickup-main .notice.error { margin: 12px 20px 0; background: #33211d; color: #ffb39c; }
 .toast {
-  position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60;
+  position: fixed; left: 50%; top: 214px; transform: translateX(-50%); z-index: 60;
   background: #f2f2f3; color: #111; border-radius: 22px; padding: 11px 18px;
   font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 20px #0008;
   animation: toast-in .22s ease-out;
@@ -399,3 +399,67 @@ input:focus-visible + .check { outline: 2px solid var(--lime); outline-offset: 2
   align-self: flex-start; margin-top: 14px; border: 0; background: none; padding: 4px 0;
   color: var(--text-sub); font-size: 13px; text-decoration: underline; text-underline-offset: 3px;
 }
+
+.dev-code { width: 100%; margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.dev-code .auth-input { margin: 0; }
+.dev-code .retry-btn { margin-top: 0; }
+
+/* ---------- 다크 지도 ----------
+ * 카카오맵 JS SDK는 다크 스타일을 제공하지 않으므로 지도 타일 이미지에만 필터를 건다.
+ * 핀(CustomOverlay = div/svg)과 선(Polyline = svg)은 img 가 아니라 영향을 받지 않는다. */
+/* 카카오가 지도 노드에 밝은 bg_tile.png 를 inline 으로 넣어 타일 사이가 하얗게 보이므로 덮어쓴다 */
+.map { background: #1b1f24 !important; }
+.map img {
+  filter: invert(1) hue-rotate(180deg) brightness(.78) contrast(.92) saturate(.55);
+}
+.walk-chip {
+  position: absolute; left: 12px; bottom: 16px; z-index: 10;
+  background: rgba(17, 18, 20, .88); color: #e9ffa0; border: 1px solid #3a3f2a;
+  border-radius: 16px; padding: 7px 11px; font-size: 12px; font-weight: 600; pointer-events: none;
+}
+.has-departure .walk-chip { bottom: 44px; }
+
+/* ---------- 개발 전용: 데모 패널 / 개발 메뉴 ---------- */
+.demo-panel { position: fixed; right: 12px; bottom: 12px; z-index: 100; font-size: 12px; }
+.demo-toggle {
+  border: 1px dashed #d4f53c; background: #111; color: #d4f53c; border-radius: 16px;
+  padding: 6px 12px; font-size: 11px; font-weight: 800; letter-spacing: .5px; display: block; margin-left: auto;
+}
+.demo-body {
+  margin-top: 8px; width: 230px; background: #17181b; border: 1px solid #34363b; border-radius: 12px;
+  padding: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 8px 30px #000a;
+}
+.demo-body p { margin: 0 0 4px; color: #b9bbc0; line-height: 1.5; }
+.demo-body button { border: 0; border-radius: 7px; padding: 8px; background: #2b2c30; color: #fff; font-size: 12px; }
+.demo-body button.ghost { background: none; color: #8d8f94; text-decoration: underline; }
+.demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.demo-check { display: flex; gap: 6px; align-items: center; color: #d0d1d5; margin: 4px 0; }
+.dev-home { padding: 14px 20px 40px; }
+.dev-steps { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.dev-steps li { background: #1c1d20; border: 1px solid #2f3034; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.dev-steps a { color: #e9ffa0; font-weight: 600; font-size: 15px; }
+.dev-steps span { color: var(--text-sub); font-size: 12px; }
+.dev-home .auth-help a { color: #e9ffa0; text-decoration: underline; }
+
+.status-extra {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--surface-line);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  color: var(--orange); font-size: 13px; font-weight: 600;
+}
+.status-extra span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ---------- 상태 카드 v2: 큰 도착 시각 ---------- */
+.status-time { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 4px; }
+.status-time strong { font-size: 46px; font-weight: 700; letter-spacing: -1.2px; line-height: 1; font-variant-numeric: tabular-nums; }
+.status-time span { font-size: 15px; color: #d6d7da; font-weight: 500; }
+.status-card h1.status-msg { font-size: 20px; margin: 10px 0 0; font-weight: 700; letter-spacing: -.5px; }
+
+/* ---------- 출발 시트 접기/펼치기 ---------- */
+.sheet-handle-btn { display: block; width: 100%; border: 0; background: none; padding: 0 0 12px; cursor: pointer; }
+.sheet-handle-btn .sheet-handle { margin: 0 auto; }
+.departure-sheet { animation: sheet-up .22s cubic-bezier(.2, .8, .2, 1); }
+.pickup-main.departure-collapsed { padding-bottom: 20px; }
+.map-fit.active { background: #2a2c30; color: var(--lime); }
+
+.preview-note { margin: 18px 0 0; padding: 10px 12px; border-radius: 8px; background: #1f2414; color: #cfe58a; font-size: 12px; }
+.done-next { margin-top: 32px; max-width: 320px; }

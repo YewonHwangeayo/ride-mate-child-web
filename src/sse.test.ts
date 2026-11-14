@@ -11,11 +11,7 @@ function collect(chunks: string[]) {
 
 describe('SSE parser', () => {
   it('reassembles events split across TCP chunks', () => {
-    const events = collect([
-      'event: snapshot\n',
-      'data: {"linkStatus":"ACTIVE","change":null}\n',
-      '\n',
-    ]);
+    const events = collect(['event: snapshot\n', 'data: {"linkStatus":"ACTIVE","change":null}\n', '\n']);
     expect(events).toEqual([{ type: 'snapshot', data: { linkStatus: 'ACTIVE', change: null } }]);
   });
 
